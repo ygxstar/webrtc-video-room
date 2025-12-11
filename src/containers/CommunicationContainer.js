@@ -19,6 +19,7 @@ class CommunicationContainer extends React.Component {
     this.toggleVideo = this.toggleVideo.bind(this);
     this.toggleAudio = this.toggleAudio.bind(this);
     this.send = this.send.bind(this);
+    this.toggleCamera = this.toggleCamera.bind(this);
   }
   hideAuth() {
     this.props.media.setState({bridge: 'connecting'});
@@ -34,11 +35,31 @@ class CommunicationContainer extends React.Component {
       this.props.media.setState({user: 'host', bridge: 'create'}));
     socket.on('full', this.full);
     socket.on('bridge', () => this.props.media.init());
-    socket.on('join', () =>
-      this.props.media.setState({user: 'guest', bridge: 'join'}));
+    socket.on('join', () => {
+      this.props.media.setState({user: 'guest', bridge: 'join'});
+      // If user enabled 'skipInvite' on Home page, automatically send an invitation message 'hello'
+      const skipInvite = (typeof window !== 'undefined') ? (localStorage.getItem('skipInvite') === 'true') : false;
+      console.log('[WebRTC] Received join, skipInvite:', skipInvite);
+      if (skipInvite) {
+        try {
+          socket.emit('auth', { message: 'hello' });
+          this.hideAuth();
+        } catch (e) {
+          console.error('Failed to auto-send invitation', e);
+        }
+      }
+    });
     socket.on('approve', ({ message, sid }) => {
-      this.props.media.setState({bridge: 'approve'});
-      this.setState({ message, sid });
+      // If user enabled autoAccept in the Home page, stored in localStorage, accept automatically
+      const autoAccept = (typeof window !== 'undefined') ? (localStorage.getItem('autoAccept') === 'true') : false;
+      console.log('[WebRTC] Received approve, autoAccept:', autoAccept);
+      if (autoAccept) {
+        socket.emit('accept', sid);
+        this.hideAuth();
+      } else {
+        this.props.media.setState({bridge: 'approve'});
+        this.setState({ message, sid });
+      }
     });
     socket.emit('find');
     this.props.getUserMedia
@@ -74,12 +95,18 @@ class CommunicationContainer extends React.Component {
   handleHangup() {
     this.props.media.hangup();
   }
+  toggleCamera() {
+    if (this.props.media) {
+      this.props.media.toggleCamera();
+    }
+  }
   render(){
     return (
       <Communication
         {...this.state}
         toggleVideo={this.toggleVideo}
         toggleAudio={this.toggleAudio}
+        toggleCamera={this.toggleCamera}
         send={this.send}
         handleHangup={this.handleHangup}
         handleInput={this.handleInput}

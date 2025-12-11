@@ -17,6 +17,8 @@ class MediaBridge extends Component {
     this.hangup = this.hangup.bind(this);
     this.init = this.init.bind(this);
     this.setDescription = this.setDescription.bind(this);
+    this.toggleCamera = this.toggleCamera.bind(this);
+    this.cameraIndex = 0;
   }
   componentDidMount() {
     this.props.media(this);
@@ -48,7 +50,9 @@ class MediaBridge extends Component {
           this.pc.setRemoteDescription(new RTCSessionDescription(message));
       } else if (message.type === 'candidate') {
             // add ice candidate
-            this.pc.addIceCandidate(message.candidate);
+            if (message.candidate) {
+              this.pc.addIceCandidate(new RTCIceCandidate(message.candidate)).catch(this.handleError);
+            }
       }
   }
   sendData(msg) {
@@ -80,6 +84,53 @@ class MediaBridge extends Component {
   handleError(e) {
     console.log(e);
   }
+  toggleCamera() {
+    // Switch to next available video input device
+    navigator.mediaDevices.enumerateDevices()
+      .then(devices => {
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        if (videoDevices.length <= 1) {
+          console.warn('[WebRTC] Only one or no camera available');
+          return;
+        }
+        this.cameraIndex = (this.cameraIndex + 1) % videoDevices.length;
+        const selectedDevice = videoDevices[this.cameraIndex];
+        console.log('[WebRTC] Switching to camera:', selectedDevice.label);
+        
+        // Get new stream with selected device
+        return navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: { deviceId: { exact: selectedDevice.deviceId } }
+        });
+      })
+      .then(newStream => {
+        // Stop old video track
+        const oldVideoTrack = this.localStream.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          oldVideoTrack.stop();
+        }
+        
+        // Replace video track in stream
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        this.localStream.removeTrack(oldVideoTrack);
+        this.localStream.addTrack(newVideoTrack);
+        
+        // Update video element
+        this.localVideo.srcObject = this.localStream;
+        
+        // Update PeerConnection if established
+        if (this.pc && this.pc.connectionState === 'connected') {
+          const sender = this.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(newVideoTrack);
+            console.log('[WebRTC] Replaced video track in peer connection');
+          }
+        }
+      })
+      .catch(e => {
+        console.error('[WebRTC] Camera switch failed:', e);
+      });
+  }
   init() {
     // wait for local media to be ready
     const attachMediaIfReady = () => {
@@ -107,6 +158,16 @@ class MediaBridge extends Component {
         }
     };
     // when the other side added a media stream, show it on screen
+    // Modern approach: use ontrack instead of deprecated onaddstream
+    this.pc.ontrack = e => {
+        console.log('ontrack', e);
+        if (e.track.kind === 'video' && e.streams && e.streams[0]) {
+            this.remoteStream = e.streams[0];
+            this.remoteVideo.srcObject = this.remoteStream;
+            this.setState({bridge: 'established'});
+        }
+    };
+    // Fallback for older browsers
     this.pc.onaddstream = e => {
         console.log('onaddstream', e) 
         this.remoteStream = e.stream;
@@ -123,6 +184,13 @@ class MediaBridge extends Component {
           }
         });
         //sendData('hello');
+    };
+    // Monitor connection state
+    this.pc.onconnectionstatechange = e => {
+        console.log('Connection state:', this.pc.connectionState);
+    };
+    this.pc.oniceconnectionstatechange = e => {
+        console.log('ICE connection state:', this.pc.iceConnectionState);
     };
     // attach local media to the peer connection
     this.localStream.getTracks().forEach(track => this.pc.addTrack(track, this.localStream));

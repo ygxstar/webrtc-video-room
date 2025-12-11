@@ -23,6 +23,12 @@ const Communication = props =>
           <path className="off" d="M40 8H8c-2.21 0-4 1.79-4 4v24c0 2.21 1.79 4 4 4h32c2.21 0 4-1.79 4-4V12c0-2.21-1.79-4-4-4zm-4 24l-8-6.4V32H12V16h16v6.4l8-6.4v16z" fill="white"></path>
         </svg>
       </button>
+      <button onClick={props.toggleCamera} className="camera-switch-button" title="Switch camera">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" className="svg">
+          <path d="M25 15c-5.52 0-10 4.48-10 10s4.48 10 10 10 10-4.48 10-10-4.48-10-10-10zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm11-24H7c-1.1 0-2 .9-2 2v26c0 1.1.9 2 2 2h29c1.1 0 2-.9 2-2V11c0-1.1-.9-2-2-2zm0 28H7V11h29v26z" fill="white"></path>
+          <circle cx="36" cy="16" r="2.5" fill="white"></circle>
+        </svg>
+      </button>
       <button onClick={ToggleFullScreen} className="fullscreen-button">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" className="svg">
           <path className="on" d="M10 32h6v6h4V28H10v4zm6-16h-6v4h10V10h-4v6zm12 22h4v-6h6v-4H28v10zm4-22v-6h-4v10h10v-4h-6z" fill="white"></path>
@@ -64,6 +70,7 @@ Communication.propTypes = {
   video: PropTypes.bool.isRequired,
   toggleVideo: PropTypes.func.isRequired,
   toggleAudio: PropTypes.func.isRequired,
+  toggleCamera: PropTypes.func.isRequired,
   send: PropTypes.func.isRequired,
   handleHangup: PropTypes.func.isRequired,
   handleInput: PropTypes.func.isRequired,

@@ -39,7 +39,8 @@ input[type=text] {
 .audio-button-false,
 .video-button-true,
 .video-button-false,
-.fullscreen-button {
+.fullscreen-button,
+.camera-switch-button {
     width: 3em;
     height: 3em;
     border-radius: 50%;
@@ -59,7 +60,8 @@ input[type=text] {
 .audio-button-false:hover,
 .video-button-true:hover,
 .video-button-false:hover,
-.fullscreen-button:hover {
+.fullscreen-button:hover,
+.camera-switch-button:hover {
     box-shadow: .4ex .4ex 3em #666;
     background: rgba(64, 124, 247, 1)
 }
